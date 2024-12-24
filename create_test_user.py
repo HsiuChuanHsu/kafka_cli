@@ -22,7 +22,7 @@ def main():
 
         # 創建測試使用者
         test_user = UserConfig(
-            username="testuser2",
+            username="testuser3",
             password="TestPassword123",
             iterations=4096
         )

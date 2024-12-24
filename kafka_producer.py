@@ -14,7 +14,11 @@ def delivery_report(err, msg):
 def produce_messages():
     # Producer configuration
     conf = {
-        'bootstrap.servers': 'localhost:9092'
+        'bootstrap.servers': 'localhost:9092',
+        'security.protocol': 'SASL_PLAINTEXT',
+        'sasl.mechanism': 'SCRAM-SHA-256',
+        'sasl.username': 'testuser3',  # 使用你的用戶名
+        'sasl.password': 'TestPassword123'  # 使用你的密碼
     }
 
     # Create Producer instance

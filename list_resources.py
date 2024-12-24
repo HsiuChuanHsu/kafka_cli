@@ -6,6 +6,7 @@ from automation import KafkaAutomation
 from contextlib import contextmanager
 from confluent_kafka.admin import AdminClient
 import logging
+from tabulate import tabulate
 
 class KafkaResourceLister:
     """Kafka 資源列表工具"""
@@ -102,42 +103,79 @@ class KafkaResourceLister:
         except Exception as e:
             self.logger.error(f"列出消費者群組時發生錯誤: {str(e)}")
             return []
+        
+
+    def print_user_acls(self):
+        """以表格方式打印使用者和 ACL 權限"""
+        print("\n=== Users and ACLs ===")
+        
+        users = self.user_manager.list_users()
+        for user in users:
+            print(f"\nUser: {user}")
+            acls = self.user_manager.list_acls(user)
+            
+            if acls:
+                # 準備表格數據
+                table_data = []
+                for acl in acls:
+                    table_data.append([
+                        acl['resource_type'],
+                        acl['resource_name'],
+                        acl['operation'],
+                        acl['permission']
+                    ])
+                
+                # 使用 tabulate 打印表格
+                headers = ['Resource Type', 'Resource Name', 'Operation', 'Permission']
+                print(tabulate(table_data, headers=headers, tablefmt='grid'))
+            else:
+                print("No ACLs found")
 
     def print_all_resources(self):
         """打印所有資源信息"""
         # 打印 Topics
         print("\n=== Topics ===")
         topics = self.topic_manager.list_topics()
+        topics_table = []
         for topic in topics:
-            print(f"\nTopic: {topic}")
             details = self.topic_manager.get_topic_details(topic)
             if details:
-                print(f"  分區數: {details['num_partitions']}")
-                print(f"  複製因子: {details['replication_factor']}")
+                topics_table.append([
+                    topic,
+                    details['num_partitions'],
+                    details['replication_factor']
+                ])
+        
+        print(tabulate(topics_table, 
+                    headers=['Topic', 'Partitions', 'Replication Factor'],
+                    tablefmt='grid'))
 
-        # 打印使用者和 ACL
-        print("\n=== Users ===")
-        users = self.user_manager.list_users()
-        for user in users:
-            print(f"\nUser: {user}")
-            acls = self.user_manager.list_acls(user)
-            if acls:
-                print("  ACL 權限:")
-                for acl in acls:
-                    print(f"    - {acl['resource_type']}: {acl['resource_name']}")
-                    print(f"      Operation: {acl['operation']}")
+        # 打印使用者和 ACL (使用新的表格格式)
+        self.print_user_acls()
 
         # 打印消費者群組
         print("\n=== Consumer Groups ===")
         groups = self.list_consumer_groups()
+        groups_table = []
         for group in groups:
-            print(f"\nGroup: {group['name']}")
-            print(f"State: {group.get('state', 'Unknown')}")
-            if group['members']:
-                print("  Members:")
-                for member in group['members']:
-                    print(f"    - Client ID: {member['client_id']}")
-                    print(f"      Host: {member['host']}")
+            for member in group.get('members', []):
+                groups_table.append([
+                    group['name'],
+                    group.get('state', 'Unknown'),
+                    member['client_id'],
+                    member['host']
+                ])
+            if not group.get('members'):
+                groups_table.append([
+                    group['name'],
+                    group.get('state', 'Unknown'),
+                    '-',
+                    '-'
+                ])
+        
+        print(tabulate(groups_table,
+                    headers=['Group', 'State', 'Client ID', 'Host'],
+                    tablefmt='grid'))
 
 def main():
     # Zookeeper 連接配置
